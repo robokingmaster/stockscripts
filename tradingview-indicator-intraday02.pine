@@ -1,0 +1,197 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © singhipst
+
+//      Indicator For Intra Day, Which has the Following
+//          Default Settings:
+//          1) EMA-10 Green Line
+//          2) EMA-20 Red Line
+//          3) SMA-50 Black Line
+//          4) First Candle High and Low In Box or Line
+//          5) Pivot Points
+
+//@version=5
+indicator('Intraday SMA, EMA, High Low, Pivot Point', overlay=true, dynamic_requests=true)
+
+// Ensure the script runs only on intraday charts
+if (timeframe.isintraday == false)
+    runtime.error("This script is designed to run only on intraday charts")
+
+// Variables to store the high and low of the first candle
+var float start_price_high = na
+var float start_price_low = na
+var int first_candle_time_start = na
+
+// Get the Indian market's timezone (UTC + 5:30)
+var int timezone_offset = 5 * 60 * 60 + 30 * 60  // Indian Standard Time (IST) offset
+
+// Reset variables at the start of a new day
+if (dayofweek(time) != dayofweek(time[1]))  // New day
+    start_price_high := na
+    start_price_low := na
+    first_candle_time_start := na
+
+// Get the high and low of the first candle of the day
+if (na(start_price_high) and na(start_price_low)) 
+    start_price_high := high
+    start_price_low := low
+    first_candle_time_start := time
+
+// Define the start and end times for the box (adjusted for Indian market time)
+var int box_start = na
+var int box_end = na
+if (na(box_start) or dayofweek(time) != dayofweek(time[1]))
+    box_start := first_candle_time_start
+    box_end := timestamp("Asia/Kolkata", year(time), month(time), dayofmonth(time), 15, 30)  // Market closes at 3:30 PM IST
+
+// Input settings for box customization
+showBox = input.bool(false, title="Show First High Low Candle In Box", group='All Showing First Candle Low and High')
+BorderColor = input.color(#0f0f0f, title="Border Color", group='Choose Box Color')
+BoxColor = input.color(#fefff1d8, title="Box Fill Color")
+BoxWidth = input.int(title="Line Width", defval=2, minval=1, maxval=10)
+ShowPrice = input.bool(true, title="Show Price Label", group='All Showing First Candle Low and High Price Label')
+
+if(showBox)
+    // Draw the rectangle box if the start price high and low are set
+    var box myBox = na
+    if (not na(start_price_high) and not na(start_price_low) and not na(box_start) and not na(box_end)) 
+        if (na(myBox))  // Create the box if it doesn't exist
+            myBox := box.new(left=box_start, right=box_end, top=start_price_high, bottom=start_price_low, xloc=xloc.bar_time, border_color=BorderColor, border_width=BoxWidth, bgcolor=BoxColor)
+        else  // Update the box if it exists
+            box.set_left(myBox, box_start)
+            box.set_right(myBox, box_end)
+            box.set_top(myBox, start_price_high)
+            box.set_bottom(myBox, start_price_low)
+else
+    // Draw the High and Low Line
+    line.new(x1=first_candle_time_start, y1=start_price_high, x2=box_end, y2=start_price_high, xloc=xloc.bar_time, width=2, style=line.style_solid, color=#21cc2ff3)
+    line.new(x1=first_candle_time_start, y1=start_price_low, x2=box_end, y2=start_price_low, xloc=xloc.bar_time, width=2, style=line.style_solid, color=#d44215f3)
+
+if(ShowPrice)
+    // Labeling The Line
+    labelHigh = label.new(x=(first_candle_time_start+box_end)/2, y=start_price_high, xloc=xloc.bar_time, color=color.yellow, textcolor=color.black, text=str.tostring(start_price_high))
+    label.set_textalign(id=labelHigh, textalign=text.align_center)
+    labelLow = label.new(x=(first_candle_time_start+box_end)/2, y=start_price_low, xloc=xloc.bar_time, color=color.yellow, textcolor=color.black, text=str.tostring(start_price_low))
+    label.set_textalign(id=labelLow, textalign=text.align_center)
+
+//  // EMA For Intraday
+// Option to toggle the visibility of the SMA
+showEMA = input.bool(true, title="Show EMA", group='All About Exponantial Moving Average')
+EMA1 = input.int(defval=10, minval=1, title="Short Term Trend Example: EMA 10")
+EMA2 = input.int(defval=20, minval=1, title="PullBack Support Example: EMA 20")
+
+EMALine1 = ta.ema(close, EMA1)
+EMALine2 = ta.ema(close, EMA2)
+
+plot(showEMA ? EMALine1 : na, color=#04ce52f6, linewidth=2)
+plot(showEMA ? EMALine2 : na, color=#dd2a2af3, linewidth=2)
+
+showSMA = input.bool(true, title="Show SMA", group='All About Simple Moving Average')
+SMA1 = input.int(50, minval=1, title="Input SM Value, Example: Uptrend Defence Line, Below Means Trend Over")
+
+SMALine1 = ta.sma(close, SMA1)
+plot(showSMA ? SMALine1 : na, color=#0e0d0dfa, title="MA",  linewidth = 2)
+
+title = 'Ritesh | Intraday'
+textVPosition = 'bottom'
+textHPosition = 'right'
+c_text = color.new(#000000, 0)
+s_title = 'normal'
+a_title = 'center'
+c_bg = color.new(#ffffff, 100)
+b_title ='large'
+textWatermark = table.new(textVPosition + '_' + textHPosition, 1, 3)
+table.cell(textWatermark, 0, 0, title, 0, 0, c_text, a_title, text_size=s_title, bgcolor=c_bg)
+
+//// Adding Pivot Points
+// Input to choose pivot period
+pivot_period = input.string("Day", title="Pivot Period", options=["Day", "Week", "Month", "Year"], group='All About Pivot Point Configuration')
+
+// Set the resolution based on the chosen pivot period
+pivot_res = switch pivot_period
+    "Day" => "D"
+    "Week" => "W"
+    "Month" => "M"
+    "Year" => "Y"
+    
+// Get high, low, and close of the previous period
+var float prev_high = na
+var float prev_low = na
+var float prev_close = na
+
+// Fetch previous period's high, low, and close
+if ta.change(time(pivot_res)) != 0
+    prev_high := request.security(syminfo.tickerid, pivot_res, high[1], lookahead=barmerge.lookahead_on)
+    prev_low := request.security(syminfo.tickerid, pivot_res, low[1], lookahead=barmerge.lookahead_on)
+    prev_close := request.security(syminfo.tickerid, pivot_res, close[1], lookahead=barmerge.lookahead_on)
+
+// Calculate Pivot Values
+pp1 = (prev_high + prev_low + prev_close) / 3
+r1 = 2 * pp1 - prev_low
+r2 = pp1 + prev_high - prev_low
+r3 = prev_high + 2 * (pp1 - prev_low)
+s1 = 2 * pp1 - prev_high
+s2 = pp1 - (prev_high - prev_low)
+s3 = prev_low - 2 * (prev_high - pp1)
+
+var line_pp1 = line.new(na, na, na, na, width=1, color=color.black)
+var label_pp1 = label.new(na, na, '', style=label.style_label_down, color=color.black, textcolor=color.white, size=size.normal)
+
+var line_r1 = line.new(na, na, na, na, width=1, color=color.blue)
+var label_r1 = label.new(na, na, '', style=label.style_label_down, color=color.blue, textcolor=color.white, size=size.normal)  // Değişiklik burada
+
+var line_r2 = line.new(na, na, na, na, width=1, color=color.blue)
+var label_r2 = label.new(na, na, '', style=label.style_label_down, color=color.blue, textcolor=color.white, size=size.normal)  // Değişiklik burada
+
+var line_r3 = line.new(na, na, na, na, width=1, color=color.blue)
+var label_r3 = label.new(na, na, '', style=label.style_label_down, color=color.blue, textcolor=color.white, size=size.normal)  // Değişiklik burada
+
+var line_s1 = line.new(na, na, na, na, width=1, color=color.blue)
+var label_s1 = label.new(na, na, '', style=label.style_label_down, color=color.blue, textcolor=color.white, size=size.normal)
+
+var line_s2 = line.new(na, na, na, na, width=1, color=color.blue)
+var label_s2 = label.new(na, na, '', style=label.style_label_down, color=color.blue, textcolor=color.white, size=size.normal)
+
+var line_s3 = line.new(na, na, na, na, width=1, color=color.blue)
+var label_s3 = label.new(na, na, '', style=label.style_label_down, color=color.blue, textcolor=color.white, size=size.normal)
+
+line.set_xy1(line_r1, bar_index - 0, r1)
+line.set_xy2(line_r1, bar_index + 1, r1)
+line.set_extend(line_r1, extend.right)
+label.set_xy(label_r1, bar_index + 30, r1)
+label.set_text(label_r1, 'R-1 : ' + str.tostring(r1, format.mintick))
+
+line.set_xy1(line_r2, bar_index - 0, r2)
+line.set_xy2(line_r2, bar_index + 1, r2)
+line.set_extend(line_r2, extend.right)
+label.set_xy(label_r2, bar_index + 30, r2)
+label.set_text(label_r2, 'R-2 : ' + str.tostring(r2, format.mintick))
+
+line.set_xy1(line_r3, bar_index - 0, r3)
+line.set_xy2(line_r3, bar_index + 1, r3)
+line.set_extend(line_r3, extend.right)
+label.set_xy(label_r3, bar_index + 30, r3)
+label.set_text(label_r3, 'R-3 : ' + str.tostring(r3, format.mintick))
+
+line.set_xy1(line_s1, bar_index - 0, s1)
+line.set_xy2(line_s1, bar_index + 1, s1)
+line.set_extend(line_s1, extend.right)
+label.set_xy(label_s1, bar_index + 30, s1)
+label.set_text(label_s1, 'S-1 : ' + str.tostring(s1, format.mintick))
+
+line.set_xy1(line_s2, bar_index - 0, s2)
+line.set_xy2(line_s2, bar_index + 1, s2)
+line.set_extend(line_s2, extend.right)
+label.set_xy(label_s2, bar_index + 30, s2)
+label.set_text(label_s2, 'S-2 : ' + str.tostring(s2, format.mintick))
+
+line.set_xy1(line_s3, bar_index - 0, s3)
+line.set_xy2(line_s3, bar_index + 1, s3)
+line.set_extend(line_s3, extend.right)
+label.set_xy(label_s3, bar_index + 30, s3)
+label.set_text(label_s3, 'S-2: ' + str.tostring(s3, format.mintick))
+
+line.set_xy1(line_pp1, bar_index - 0, pp1)
+line.set_xy2(line_pp1, bar_index + 1, pp1)
+line.set_extend(line_pp1, extend.right)
+label.set_xy(label_pp1, bar_index + 30, pp1)
+label.set_text(label_pp1, 'PP : ' + str.tostring(pp1, format.mintick))

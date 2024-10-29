@@ -1,0 +1,103 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © singhipst
+
+//      Indicator For Intra Day, Which has the Following
+//          Default Settings:
+//          1) EMA-10 Green Line
+//          2) EMA-20 Red Line
+//          3) SMA-50 Black Line
+//          4) First Candle High and Low In Box or Line
+
+
+//@version=5
+indicator('Intraday SMA, EMA, High Low, Pivot Point', overlay=true, dynamic_requests=true)
+
+// Ensure the script runs only on intraday charts
+if (timeframe.isintraday == false)
+    runtime.error("This script is designed to run only on intraday charts")
+
+// Variables to store the high and low of the first candle
+var float start_price_high = na
+var float start_price_low = na
+var int first_candle_time_start = na
+
+// Get the Indian market's timezone (UTC + 5:30)
+var int timezone_offset = 5 * 60 * 60 + 30 * 60  // Indian Standard Time (IST) offset
+
+// Reset variables at the start of a new day
+if (dayofweek(time) != dayofweek(time[1]))  // New day
+    start_price_high := na
+    start_price_low := na
+    first_candle_time_start := na
+
+// Get the high and low of the first candle of the day
+if (na(start_price_high) and na(start_price_low)) 
+    start_price_high := high
+    start_price_low := low
+    first_candle_time_start := time
+
+// Define the start and end times for the box (adjusted for Indian market time)
+var int box_start = na
+var int box_end = na
+if (na(box_start) or dayofweek(time) != dayofweek(time[1]))
+    box_start := first_candle_time_start
+    box_end := timestamp("Asia/Kolkata", year(time), month(time), dayofmonth(time), 15, 30)  // Market closes at 3:30 PM IST
+
+// Input settings for box customization
+showBox = input.bool(false, title="Show First High Low Candle In Box", group='All Showing First Candle Low and High')
+BorderColor = input.color(#0f0f0f, title="Border Color", group='Choose Box Color')
+BoxColor = input.color(#fefff1d8, title="Box Fill Color")
+BoxWidth = input.int(title="Line Width", defval=2, minval=1, maxval=10)
+ShowPrice = input.bool(true, title="Show Price Label", group='All Showing First Candle Low and High Price Label')
+
+if(showBox)
+    // Draw the rectangle box if the start price high and low are set
+    var box myBox = na
+    if (not na(start_price_high) and not na(start_price_low) and not na(box_start) and not na(box_end)) 
+        if (na(myBox))  // Create the box if it doesn't exist
+            myBox := box.new(left=box_start, right=box_end, top=start_price_high, bottom=start_price_low, xloc=xloc.bar_time, border_color=BorderColor, border_width=BoxWidth, bgcolor=BoxColor)
+        else  // Update the box if it exists
+            box.set_left(myBox, box_start)
+            box.set_right(myBox, box_end)
+            box.set_top(myBox, start_price_high)
+            box.set_bottom(myBox, start_price_low)
+else
+    // Draw the High and Low Line
+    line.new(x1=first_candle_time_start, y1=start_price_high, x2=box_end, y2=start_price_high, xloc=xloc.bar_time, width=2, style=line.style_solid, color=#21cc2ff3)
+    line.new(x1=first_candle_time_start, y1=start_price_low, x2=box_end, y2=start_price_low, xloc=xloc.bar_time, width=2, style=line.style_solid, color=#d44215f3)
+
+if(ShowPrice)
+    // Labeling The Line
+    labelHigh = label.new(x=(first_candle_time_start+box_end)/2, y=start_price_high, xloc=xloc.bar_time, color=color.yellow, textcolor=color.black, text=str.tostring(start_price_high))
+    label.set_textalign(id=labelHigh, textalign=text.align_center)
+    labelLow = label.new(x=(first_candle_time_start+box_end)/2, y=start_price_low, xloc=xloc.bar_time, color=color.yellow, textcolor=color.black, text=str.tostring(start_price_low))
+    label.set_textalign(id=labelLow, textalign=text.align_center)
+
+//  // EMA For Intraday
+// Option to toggle the visibility of the SMA
+showEMA = input.bool(true, title="Show EMA", group='All About Exponantial Moving Average')
+EMA1 = input.int(defval=10, minval=1, title="Short Term Trend Example: EMA 10")
+EMA2 = input.int(defval=20, minval=1, title="PullBack Support Example: EMA 20")
+
+EMALine1 = ta.ema(close, EMA1)
+EMALine2 = ta.ema(close, EMA2)
+
+plot(showEMA ? EMALine1 : na, color=#04ce52f6, linewidth=2)
+plot(showEMA ? EMALine2 : na, color=#dd2a2af3, linewidth=2)
+
+showSMA = input.bool(true, title="Show SMA", group='All About Simple Moving Average')
+SMA1 = input.int(50, minval=1, title="Input SM Value, Example: Uptrend Defence Line, Below Means Trend Over")
+
+SMALine1 = ta.sma(close, SMA1)
+plot(showSMA ? SMALine1 : na, color=#0e0d0dfa, title="MA",  linewidth = 2)
+
+title = 'Ritesh | Intraday'
+textVPosition = 'bottom'
+textHPosition = 'right'
+c_text = color.new(#000000, 0)
+s_title = 'normal'
+a_title = 'center'
+c_bg = color.new(#ffffff, 100)
+b_title ='large'
+textWatermark = table.new(textVPosition + '_' + textHPosition, 1, 3)
+table.cell(textWatermark, 0, 0, title, 0, 0, c_text, a_title, text_size=s_title, bgcolor=c_bg)
