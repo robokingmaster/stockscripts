@@ -79,6 +79,8 @@ def get_data(url):
         response = sess.get(url_nf, headers=headers, timeout=5, cookies=cookies)
     if(response.status_code==200):
         return response.text
+    
+    print(response.text)
     return ""
 
 # Showing Header in structured format with Last Price and Nearest Strike

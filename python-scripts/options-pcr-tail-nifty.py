@@ -3,8 +3,8 @@ from nselib import *
 from tabulate import tabulate
 import os
 
-expiry_date = "12-Oct-2023"
-strike_price = 19550
+expiry_date = "30-Oct-2024"
+strike_price = 24000
 trail_time_min = 5
 
 # Valiable To Hold Data
