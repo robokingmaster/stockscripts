@@ -65,7 +65,7 @@ async def print_portfolio():
             
             if(profit_loss > 0):
                 profit_loss = strGreen(profit_loss)
-                profit_loss_per = strGreen(profit_loss_per)
+                profit_loss_per = strGreen(abs(profit_loss_per))
             else:
                 profit_loss = strRed(profit_loss)
                 profit_loss_per = strRed(profit_loss_per)

@@ -81,7 +81,7 @@ async def print_holdings():
             
             if(profit_loss > 0):
                 profit_loss = strGreen(profit_loss)
-                profit_loss_per = strGreen(profit_loss_per)
+                profit_loss_per = strGreen(abs(profit_loss_per))
             else:
                 profit_loss = strRed(profit_loss)
                 profit_loss_per = strRed(profit_loss_per)         
@@ -110,7 +110,7 @@ async def print_holdings():
         
         print('\033c')
         printhr()
-        print_header("Dhan Portfolio", dt_string, round(TOTAL_INVESTMENT, 2), round(CURRENT_VALUE, 2), round(TOTAL_PROFIT_LOSS, 2), round(TOTAL_PROFITLOSS_PER, 2))
+        print_header("Dhan Portfolio", dt_string, round(TOTAL_INVESTMENT, 2), round(CURRENT_VALUE, 2), round(TOTAL_PROFIT_LOSS, 2), round(abs(TOTAL_PROFITLOSS_PER), 2))
         printhr()
         print(tabulate(data_array, headers=data_array_header, floatfmt=".2f", tablefmt="simple"))
         printhr()
