@@ -4,7 +4,7 @@
 pip install -r ../requirements.txt
 ```
 
-Create a file auth/CoinSwitchAPIAuth.py with below content
+Create a file auth/DhanAPIAuth.py with below content
 ```
 API_AUTH = {
     "CLIENT_ID": "<DHAN-CLIENT-ID>",
