@@ -1,3 +1,5 @@
+import time
+import asyncio
 import coinswitchapi
 import json
 import sys
@@ -46,62 +48,72 @@ def color_code(value):
     else:
         return value
 
-  
-if __name__ == '__main__': 
-    
-    portfolio_data = coinswitchapi.getPortfolio()
-    portfolio_json = json.loads(portfolio_data.text)
-    
-    invested = 0.0
-    curvalue = 0.0 
-    profitloss = 0.0
-    profitlossper = 0.0  
-    data_array = []
-    data_array_header = ['NAME','CODE','UNITS','BUY-AVG-PRICE \u20B9','INVESTMENT-VALUE \u20B9','CURR-PRICE \u20B9','CURRENT-VALUE \u20B9','PROFIT-LOSS \u20B9','PROFIT-LOSS-%']
-    for item in portfolio_json['data']: 
-        profit_loss = Decimal(item["current_value"]) - Decimal(item["invested_value"]) 
-        profit_loss_per = 100 - (Decimal(item["current_value"]) * 100)/Decimal(item["invested_value"])
+async def print_portfolio():
+    while True:
+        portfolio_data = coinswitchapi.getPortfolio()
+        portfolio_json = json.loads(portfolio_data.text)
         
-        if(profit_loss > 0):
-            profit_loss = strGreen(profit_loss)
-            profit_loss_per = strGreen(profit_loss_per)
-        else:
-            profit_loss = strRed(profit_loss)
-            profit_loss_per = strRed(profit_loss_per)
-        
-        if(item["currency"] == "INR"):
-            invested = Decimal(item["invested_value"])
-            curvalue = Decimal(item["current_value"])
-            profitloss = curvalue - invested
-            profitlossper = 100 - (curvalue*100)/invested
+        invested = 0.0
+        curvalue = 0.0 
+        profitloss = 0.0
+        profitlossper = 0.0  
+        data_array = []
+        data_array_header = ['NAME','CODE','UNITS','BUY-AVG-PRICE \u20B9','INVESTMENT-VALUE \u20B9','CURR-PRICE \u20B9','CURRENT-VALUE \u20B9','PROFIT-LOSS \u20B9','PROFIT-LOSS-%']
+        for item in portfolio_json['data']: 
+            profit_loss = Decimal(item["current_value"]) - Decimal(item["invested_value"]) 
+            profit_loss_per = 100 - (Decimal(item["current_value"]) * 100)/Decimal(item["invested_value"])
             
-            invested = f'{invested:.2f}'
-            curvalue = f'{curvalue:.2f}'
-            profitloss = f'{profitloss:.2f}'
-            profitlossper = f'{profitlossper:.2f}'
-        else:
-            row_data = [item["name"],
-                        item["currency"],
-                        item["main_balance"],
-                        Decimal(item["buy_average_price"]),
-                        Decimal(item["invested_value"]),
-                        item["sell_rate"],
-                        Decimal(item["current_value"]),
-                        profit_loss,
-                        profit_loss_per                  
-                    ]
+            if(profit_loss > 0):
+                profit_loss = strGreen(profit_loss)
+                profit_loss_per = strGreen(profit_loss_per)
+            else:
+                profit_loss = strRed(profit_loss)
+                profit_loss_per = strRed(profit_loss_per)
+            
+            if(item["currency"] == "INR"):
+                invested = Decimal(item["invested_value"])
+                curvalue = Decimal(item["current_value"])
+                profitloss = curvalue - invested
+                profitlossper = 100 - (curvalue*100)/invested
                 
-            data_array.append(row_data)
-            data_array = sorted(data_array, key=lambda name: name[1])
-    
+                invested = f'{invested:.2f}'
+                curvalue = f'{curvalue:.2f}'
+                profitloss = f'{profitloss:.2f}'
+                profitlossper = f'{profitlossper:.2f}'
+            else:
+                row_data = [item["name"],
+                            item["currency"],
+                            item["main_balance"],
+                            Decimal(item["buy_average_price"]),
+                            Decimal(item["invested_value"]),
+                            item["sell_rate"],
+                            Decimal(item["current_value"]),
+                            profit_loss,
+                            profit_loss_per                  
+                        ]
+                    
+                data_array.append(row_data)
+                data_array = sorted(data_array, key=lambda name: name[1])
+        
 
-    # Printing Data On Screen
-    now = datetime.now()
-    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-    
-    print('\033c')
-    printhr()
-    print_header("CoinSwitch Portfolio", dt_string, invested, curvalue, profitloss, profitlossper)
-    printhr()
-    print(tabulate(data_array, headers=data_array_header, floatfmt=".6f", tablefmt="simple"))
-    printhr()
+        # Printing Data On Screen
+        now = datetime.now()
+        dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+        
+        print('\033c')
+        printhr()
+        print_header("CoinSwitch Portfolio", dt_string, invested, curvalue, profitloss, profitlossper)
+        printhr()
+        print(tabulate(data_array, headers=data_array_header, floatfmt=".6f", tablefmt="simple"))
+        printhr()
+        
+        for i in range(30, 0, -1):
+            print(strBold(strLightGray(f"\rFetching data in {i} seconds...")), end="")
+            time.sleep(1)
+        print(strBold(strCyan("\nFetching new data... Please wait.")))
+        await asyncio.sleep(1)        
+        
+async def main():
+    await print_portfolio()
+
+asyncio.run(main())   

@@ -193,7 +193,7 @@ def calculate_support_resistance(oi_data):
 
 async def update_data():
     global cookies
-    prev_nifty_data = prev_bank_nifty_data = None
+    prev_nifty_data = None
     while True:
         cookies = set_cookie()
         indices_data, bnf_data, nf_data = await fetch_all_data()

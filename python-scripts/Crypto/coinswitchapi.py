@@ -2,13 +2,15 @@ import os
 import requests
 import json
 import time
+import logging
 import auth.CoinSwitchAPIAuth
 from urllib.parse import urlparse, urlencode, unquote_plus
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
-API_KEYS_DICT = auth.CoinSwitchAPIAuth.API_KEYS
-BASE_URL = "https://coinswitch.co"
+logging.basicConfig(level=logging.INFO)
 
+API_AUTH_DICT = auth.CoinSwitchAPIAuth.API_AUTH
+BASE_URL = "https://coinswitch.co"
 
 def printJSONPretty(response_text):
     response_json = json.loads(response_text.text)
@@ -20,7 +22,7 @@ def validateKey():
     method = "GET"
     payload = {}
 
-    secret_key = API_KEYS_DICT.get("API_SECRET")
+    secret_key = API_AUTH_DICT.get("API_SECRET")
     
     unquote_endpoint = endpoint
     if method == "GET" and len(params) != 0:
@@ -40,7 +42,7 @@ def validateKey():
     headers_local = {
         'Content-Type': 'application/json',
         'X-AUTH-SIGNATURE': signature,
-        'X-AUTH-APIKEY': API_KEYS_DICT.get("API_KEY")
+        'X-AUTH-APIKEY': API_AUTH_DICT.get("API_KEY")
     }
 
     final_url = BASE_URL + endpoint
@@ -60,7 +62,7 @@ def testConnection():
     return response
 
 def makeApiCall(method, endpoint, payload={}, params={}):
-    secret_key = API_KEYS_DICT.get("API_SECRET")
+    secret_key = API_AUTH_DICT.get("API_SECRET")
     
     unquote_endpoint = endpoint
     if method == "GET" and len(params) != 0:
@@ -79,7 +81,7 @@ def makeApiCall(method, endpoint, payload={}, params={}):
     headers_local = {
         'Content-Type': 'application/json',
         'X-AUTH-SIGNATURE': signature,
-        'X-AUTH-APIKEY': API_KEYS_DICT.get("API_KEY")
+        'X-AUTH-APIKEY': API_AUTH_DICT.get("API_KEY")
     }    
     
     response = requests.request("GET", final_url, headers=headers_local, json=payload) 
