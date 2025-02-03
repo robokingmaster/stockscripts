@@ -1,6 +1,6 @@
-# Stock Market Scripts, Utilities & Indicators by Ritesh Kumar
+# Stock Market Scripts, Utilities & Indicators by Robo King Master
 
-Welcome to Ritesh Kumar's repository for stock market-related scripts, utilities, and indicators. This collection is designed to help traders and analysts make better-informed decisions by providing useful technical tools and automation scripts. The repository includes various TradingView Pine scripts, data utilities, and custom indicators.
+Welcome to Robo King Master repository for stock market-related scripts, utilities, and indicators. This collection is designed to help traders and analysts make better-informed decisions by providing useful technical tools and automation scripts. The repository includes various TradingView Pine scripts, data utilities, and custom indicators.
 
 ## Table of Contents
 
@@ -14,7 +14,7 @@ Welcome to Ritesh Kumar's repository for stock market-related scripts, utilities
 
 ## About the Repository
 
-This repository is created and maintained by **Ritesh Kumar** and focuses on providing tools for technical analysis, including custom indicators, alert systems, and automation scripts for TradingView, Python, and other platforms. The code here is designed to assist traders in the analysis of stocks, forex, and cryptocurrency markets.
+This repository is created and maintained by **Robo King Master** and focuses on providing tools for technical analysis, including custom indicators, alert systems, and automation scripts for TradingView, Python, and other platforms. The code here is designed to assist traders in the analysis of stocks, forex, and cryptocurrency markets.
 
 ## Scripts & Indicators
 
@@ -41,4 +41,4 @@ To use these scripts and indicators, you need to have a TradingView account for 
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/riteshkumar/stock-market-scripts.git
+   git clone https://github.com/robokingmaster/stockscripts.git
