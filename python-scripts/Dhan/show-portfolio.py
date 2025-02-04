@@ -57,8 +57,15 @@ def color_code(value):
     else:
         return value
 
+def color_text(strtext, color):
+    if(color == "RED"):
+        return strRed(strtext)
+    elif(color == "GREEN"):
+        return strGreen(strtext)
+    else:
+        return strtext
 
-async def print_holdings():
+async def print_holdings():    
     while True:
         holdings = dhan.get_holdings()
         print(json.dumps(holdings, indent=4))
@@ -79,23 +86,25 @@ async def print_holdings():
             profit_loss = curvalue - invested
             profit_loss_per = 100 - (curvalue * 100)/invested
             
-            if(profit_loss > 0):
-                profit_loss = strGreen(profit_loss)
-                profit_loss_per = strGreen(abs(profit_loss_per))
-            else:
-                profit_loss = strRed(profit_loss)
-                profit_loss_per = strRed(profit_loss_per)         
+            textcolor = ""
             
-            row_data = [item["exchange"],
-                        item["tradingSymbol"],
-                        item["isin"],
-                        item["totalQty"],
-                        float(item["avgCostPrice"]),
-                        invested,
-                        float(item["lastTradedPrice"]),
-                        curvalue,
-                        profit_loss,
-                        profit_loss_per                
+            if(profit_loss > 0):                
+                profit_loss_per = abs(profit_loss_per)
+                textcolor = "GREEN"
+            else:                
+                profit_loss_per = abs(profit_loss_per)  
+                textcolor = "RED"       
+            
+            row_data = [color_text(item["exchange"], textcolor),
+                        color_text(item["tradingSymbol"], textcolor),
+                        color_text(item["isin"], textcolor),
+                        color_text(item["totalQty"], textcolor),
+                        color_text(float(item["avgCostPrice"]), textcolor),
+                        color_text(invested, textcolor),
+                        color_text(float(item["lastTradedPrice"]), textcolor),
+                        color_text(curvalue, textcolor),
+                        color_text(profit_loss, textcolor),
+                        color_text(profit_loss_per, textcolor)               
                     ]
                 
             data_array.append(row_data)

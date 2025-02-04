@@ -48,7 +48,17 @@ def color_code(value):
     else:
         return value
 
+def color_text(strtext, color):
+    if(color == "RED"):
+        return strRed(strtext)
+    elif(color == "GREEN"):
+        return strGreen(strtext)
+    else:
+        return strtext
+    
+
 async def print_portfolio():
+    global textcolor
     while True:
         portfolio_data = coinswitchapi.getPortfolio()
         portfolio_json = json.loads(portfolio_data.text)
@@ -56,19 +66,20 @@ async def print_portfolio():
         invested = 0.0
         curvalue = 0.0 
         profitloss = 0.0
-        profitlossper = 0.0  
+        profitlossper = 0.0         
+        
         data_array = []
         data_array_header = ['NAME','CODE','UNITS','BUY-AVG-PRICE \u20B9','INVESTMENT-VALUE \u20B9','CURR-PRICE \u20B9','CURRENT-VALUE \u20B9','PROFIT-LOSS \u20B9','PROFIT-LOSS-%']
         for item in portfolio_json['data']: 
             profit_loss = Decimal(item["current_value"]) - Decimal(item["invested_value"]) 
             profit_loss_per = 100 - (Decimal(item["current_value"]) * 100)/Decimal(item["invested_value"])
             
-            if(profit_loss > 0):
-                profit_loss = strGreen(profit_loss)
-                profit_loss_per = strGreen(abs(profit_loss_per))
-            else:
-                profit_loss = strRed(profit_loss)
-                profit_loss_per = strRed(profit_loss_per)
+            if(profit_loss > 0):                
+                profit_loss_per = abs(profit_loss_per)
+                textcolor = "GREEN"
+            else:                
+                profit_loss_per = profit_loss_per
+                textcolor = "RED"
             
             if(item["currency"] == "INR"):
                 invested = Decimal(item["invested_value"])
@@ -81,15 +92,15 @@ async def print_portfolio():
                 profitloss = f'{profitloss:.2f}'
                 profitlossper = f'{profitlossper:.2f}'
             else:
-                row_data = [item["name"],
-                            item["currency"],
-                            item["main_balance"],
-                            Decimal(item["buy_average_price"]),
-                            Decimal(item["invested_value"]),
-                            item["sell_rate"],
-                            Decimal(item["current_value"]),
-                            profit_loss,
-                            profit_loss_per                  
+                row_data = [color_text(item["name"], textcolor),
+                            color_text(item["currency"], textcolor),
+                            color_text(item["main_balance"], textcolor),
+                            color_text(Decimal(item["buy_average_price"]), textcolor),
+                            color_text(Decimal(item["invested_value"]), textcolor),
+                            color_text(item["sell_rate"], textcolor),
+                            color_text(Decimal(item["current_value"]), textcolor),
+                            color_text(profit_loss, textcolor),
+                            color_text(profit_loss_per, textcolor)                  
                         ]
                     
                 data_array.append(row_data)
