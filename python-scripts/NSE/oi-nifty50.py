@@ -35,15 +35,23 @@ headers = {
 cookies = dict()
 
 # Showing Header in structured format with Last Price and Nearest Strike
-def print_header(index="",ul=0,nearest=0,expiry_date=None):
-    header_string = strPurple( index.ljust(12," ") + " => ") \
-                    + strLightPurple(" Expiry Date: ") + strBold(expiry_date) \
-                    + strLightPurple(" Last Price: ") + strBold(str(ul)) \
-                    + strLightPurple(" Nearest Strike: ") + strBold(str(nearest))
+def print_header(index="",currprice=0,nearest=0,nf_open=0,nf_high=0,nf_low=0,expiry_date=None):
+    if(currprice > nf_open):
+        currprice = strGreen(str(currprice))
+    else:
+        currprice = strRed(str(currprice))
+        
+    header_string = strPurple( index + " => ") \
+                    + strLightPurple(" Expiry Date:") + strBold(expiry_date) \
+                    + strLightPurple(" Nearest Strike:") + strBold(str(nearest)) \
+                    + strLightPurple(" Last Price:") + strBold(currprice) \
+                    + strLightPurple(" Today Open:") + strBold(str(nf_open)) \
+                    + strLightPurple(" Today Low:") + strBold(strRed(str(nf_low))) \
+                    + strLightPurple(" Today High:") + strBold(strGreen(str(nf_high)))
     print(header_string)
 
 def print_hr():
-    print(strYellow("|".rjust(150,"-")))
+    print(strYellow("|".rjust(155,"-")))
 
 def color_code(value):
     if int(value) < 1:
@@ -93,13 +101,19 @@ async def fetch_all_data():
 
 # Process the fetched data
 def process_indices_data(data):
-    global bnf_ul, nf_ul, bnf_nearest, nf_nearest
+    global bnf_ul, nf_ul, bnf_nearest, nf_nearest, nf_open, nf_high, nf_low, bnf_open, bnf_high, bnf_low
     data = json.loads(data)    
     for index in data["data"]:
         if index["index"] == "NIFTY 50":
             nf_ul = index["last"]
+            nf_open = index["open"] 
+            nf_high = index["high"]
+            nf_low = index["low"]
         if index["index"] == "NIFTY BANK":
             bnf_ul = index["last"]
+            bnf_open = index["open"] 
+            bnf_high = index["high"]
+            bnf_low = index["low"]            
     bnf_nearest = nearest_strike_bnf(bnf_ul)
     nf_nearest = nearest_strike_nf(nf_ul)    
 
@@ -129,7 +143,7 @@ def print_oi_data(index_name, index_data, previous_data=None):
     # set_header(url_indices)
     print('\033c')
     print_hr()
-    print_header(index_name, nf_ul, nf_nearest, expiryDate)
+    print_header(index_name, nf_ul, nf_nearest, nf_open, nf_high, nf_low, expiryDate)
     print_hr()
     
     # print(nifty_data)
@@ -169,22 +183,7 @@ def print_oi_data(index_name, index_data, previous_data=None):
 
     print(tabulate(data_array, headers=data_array_header))      
         
-        
-    # print(strBold(strLightPurple("Nifty Open Interest:")))
-    # for i, (strike, ce_oi, pe_oi) in enumerate(nifty_data):
-    #     ce_change = ce_oi - prev_nifty_data[i][1] if prev_nifty_data else 0
-    #     pe_change = pe_oi - prev_nifty_data[i][2] if prev_nifty_data else 0
-    #     ce_color = strGreen(ce_oi) if ce_change > 0 else strRed(ce_oi)
-    #     pe_color = strGreen(pe_oi) if pe_change > 0 else strRed(pe_oi)
-    #     print(f"Strike Price: {strike}, Call OI: {ce_color} ({strBold(f'+{ce_change}') if ce_change > 0 else strBold(ce_change) if ce_change < 0 else ce_change}), Put OI: {pe_color} ({strBold(f'+{pe_change}') if pe_change > 0 else strBold(pe_change) if pe_change < 0 else pe_change})")
-
-    # print(strBold(strLightPurple("\nBank Nifty Open Interest:")))
-    # for i, (strike, ce_oi, pe_oi) in enumerate(bank_nifty_data):
-    #     ce_change = ce_oi - prev_bank_nifty_data[i][1] if prev_bank_nifty_data else 0
-    #     pe_change = pe_oi - prev_bank_nifty_data[i][2] if prev_bank_nifty_data else 0
-    #     ce_color = strGreen(ce_oi) if ce_change > 0 else strRed(ce_oi)
-    #     pe_color = strGreen(pe_oi) if pe_change > 0 else strRed(pe_oi)
-    #     print(f"Strike Price: {strike}, Call OI: {ce_color} ({strBold(f'+{ce_change}') if ce_change > 0 else strBold(ce_change) if ce_change < 0 else ce_change}), Put OI: {pe_color} ({strBold(f'+{pe_change}') if pe_change > 0 else strBold(pe_change) if pe_change < 0 else pe_change})")
+    print_hr()    
 
 def calculate_support_resistance(oi_data):
     highest_oi_ce = max(oi_data, key=lambda x: x[1])
