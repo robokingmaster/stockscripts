@@ -1,0 +1,180 @@
+// © singhipst
+//@version=5
+indicator(title="Intraday-Stratagy-K5", shorttitle="Intraday-Stratagy-K5", overlay=true, max_lines_count=10, max_labels_count=100)
+
+//============================
+// Inputs
+//============================
+tfCalc           = input.timeframe("5", "Calculation timeframe (fixed)", tooltip="All trading logic runs on this timeframe.")
+showTodayOnly    = input.bool(true, "Show only today's drawings & signals", tooltip="Best-effort: compares bar time to current time (UTC-based).")
+showVWAP         = input.bool(true, "Plot session VWAP (no bands)")
+showVolume       = input.bool(false, "Plot Volume + SMA(20) (like default Volume)")  // default unchecked
+volSmaLen        = input.int(20, "Volume SMA length", minval=1)
+firstBarLineClrH = input.color(color.new(color.lime, 0), "First 5m High line color")
+firstBarLineClrL = input.color(color.new(color.red, 0),  "First 5m Low line color")
+buyTextColor     = input.color(color.new(color.white, 0), "Buy label text color")
+buyBgColor       = input.color(color.new(color.green,  0), "Buy label background")
+exitTextColor    = input.color(color.new(color.white, 0), "Exit label text color")
+exitBgColor      = input.color(color.new(color.orange, 0), "Exit label background")
+
+// Entry confirmation mode (kept as options in case you want to change)
+// Default keeps Volume>MA20 as earlier resolution of ambiguity; switch if needed.
+confirmMode = input.string("Volume>MA20", "Entry confirmation",
+     options = ["Volume>MA20", "Close>VWAP", "None"],
+     tooltip = "What to require in addition to two closes above the first 5-minute high.")
+
+//============================
+// Helpers: Today filter
+//============================
+// Best-effort 'today' check using UTC now: include bars within the last 24h window.
+msInDay   = 24 * 60 * 60 * 1000
+isTodayCh = not showTodayOnly or (timenow - time <= msInDay and timenow >= time)
+
+//============================
+// Session VWAP (on chart TF) - plot only if desired
+//============================
+vwap_ch = ta.vwap(hlc3)
+plotVWAP = showVWAP and timeframe.isintraday
+plot(plotVWAP ? vwap_ch : na, title="VWAP (session)", color=color.new(color.blue, 0), linewidth=2)
+
+//============================
+// Volume (overlay columns + SMA20) - optional
+//============================
+volOpacity = 0  // 0..100 (0 = opaque)
+volColor   = close >= open ? color.new(color.green, volOpacity) : color.new(color.red, volOpacity)
+volSma     = ta.sma(volume, volSmaLen)
+plot(showVolume ? volume : na, title="Volume", style=plot.style_columns, color=volColor)
+plot(showVolume ? volSma  : na, title="Volume SMA(20)", color=color.new(color.yellow, 0), linewidth=2)
+
+//============================
+// Core logic on fixed 5-minute series
+//============================
+[hi5, lo5, cl5, vol5, hlc5, t5] = request.security(syminfo.tickerid, tfCalc, [high, low, close, volume, hlc3, time], barmerge.gaps_off, barmerge.lookahead_off)
+
+// Day tracking on 5m TF
+dayId5    = request.security(syminfo.tickerid, tfCalc, year * 10000 + month * 100 + dayofmonth, barmerge.gaps_off, barmerge.lookahead_off)
+isNewDay5 = ta.change(dayId5) != 0
+
+// Capture today's first 5-minute high/low (update on new day)
+var float firstHiToday5 = na
+var float firstLoToday5 = na
+var int   firstBarTime5 = na
+
+if isNewDay5
+    firstHiToday5 := hi5
+    firstLoToday5 := lo5
+    firstBarTime5 := t5
+
+// 'Today' filter in 5m domain
+isToday5 = not showTodayOnly or (timenow - t5 <= msInDay and timenow >= t5)
+
+// Entry preconditions: two consecutive closes above first 5m high (today)
+twoClosesAboveFirstHi =
+     isToday5 and
+     not na(firstHiToday5) and
+     cl5[1] > firstHiToday5 and
+     cl5    > firstHiToday5
+
+// Entry confirmation modes
+volSma5 = ta.sma(vol5, volSmaLen)
+vwap5   = ta.vwap(hlc5)
+
+confirmOk =
+     confirmMode == "None" or
+     (confirmMode == "Volume>MA20" and vol5[1] > volSma5[1] and vol5 > volSma5) or
+     (confirmMode == "Close>VWAP"  and cl5[1] > vwap5[1]      and cl5 > vwap5)
+
+// Immediate entry condition (5m domain)
+entryNow = twoClosesAboveFirstHi and confirmOk
+
+//============================
+// FIRST OCCURRENCE LOGIC (per day)
+//============================
+// We only want the first Buy of the day, and the first Exit after that Buy.
+var bool inTrade5       = false
+var bool firstBuyDone5  = false
+var bool firstExitDone5 = false
+
+// Reset daily flags at start of a new 5m day
+if isNewDay5
+    inTrade5       := false
+    firstBuyDone5  := false
+    firstExitDone5 := false
+
+// Buy signal should appear on the NEXT bar after condition met, but only if first buy not taken yet
+buySignalRaw   = entryNow and not firstBuyDone5
+buySignal5     = buySignalRaw[1]  // next bar
+
+if buySignal5
+    inTrade5      := true
+    firstBuyDone5 := true
+
+// Exit: once in trade & first exit not done yet, two consecutive closes below VWAP -> signal on next candle
+twoBelowVWAP   = isToday5 and inTrade5 and (cl5[1] < vwap5[1]) and (cl5 < vwap5) and not firstExitDone5
+exitSignal5    = twoBelowVWAP[1]
+
+if exitSignal5
+    inTrade5        := false
+    firstExitDone5  := true
+
+//============================
+// Bring 5m signals to chart TF and place labels
+//============================
+buyOnChart  = request.security(syminfo.tickerid, tfCalc, buySignal5,  barmerge.gaps_off, barmerge.lookahead_off)
+exitOnChart = request.security(syminfo.tickerid, tfCalc, exitSignal5, barmerge.gaps_off, barmerge.lookahead_off)
+
+// Only show labels if in 'today' window on chart TF (best-effort)
+plotBuy  = buyOnChart  and isTodayCh
+plotExit = exitOnChart and isTodayCh
+
+if plotBuy
+    label.new(bar_index, low, text="Buy", style=label.style_label_up, color=buyBgColor, textcolor=buyTextColor, size=size.small)
+
+if plotExit
+    label.new(bar_index, high, text="Exit", style=label.style_label_down, color=exitBgColor, textcolor=exitTextColor, size=size.small)
+
+//============================
+// First 5m High/Low horizontal lines for TODAY only
+//============================
+var line hiLine = na
+var line loLine = na
+
+// Detect start of the day on the CHART timeframe (to anchor lines visually)
+dayIdCh    = year * 10000 + month * 100 + dayofmonth
+isNewDayCh = ta.change(dayIdCh) != 0
+
+// On each new chart day, recreate lines using the current 'today' first 5m H/L.
+if isNewDayCh or na(hiLine) or na(loLine)
+    // Delete previous
+    if not na(hiLine)
+        line.delete(hiLine)
+    if not na(loLine)
+        line.delete(loLine)
+    // Create fresh lines (they will be updated below)
+    hiLine := line.new(x1=bar_index, y1=firstHiToday5, x2=bar_index + 1, y2=firstHiToday5,
+                       extend=extend.right, color=firstBarLineClrH, width=2, xloc=xloc.bar_index)
+    loLine := line.new(x1=bar_index, y1=firstLoToday5, x2=bar_index + 1, y2=firstLoToday5,
+                       extend=extend.right, color=firstBarLineClrL, width=2, xloc=xloc.bar_index)
+
+// Keep the lines at the latest today's first 5m levels and extend to the current bar
+if not na(hiLine) and not na(firstHiToday5) and isTodayCh
+    line.set_y1(hiLine, firstHiToday5)
+    line.set_y2(hiLine, firstHiToday5)
+    line.set_x2(hiLine, bar_index)
+
+if not na(loLine) and not na(firstLoToday5) and isTodayCh
+    line.set_y1(loLine, firstLoToday5)
+    line.set_y2(loLine, firstLoToday5)
+    line.set_x2(loLine, bar_index)
+
+// Hide lines when not today (if chosen)
+if showTodayOnly and not isTodayCh
+    if not na(hiLine)
+        line.set_y1(hiLine, na)
+        line.set_y2(hiLine, na)
+    if not na(loLine)
+        line.set_y1(loLine, na)
+        line.set_y2(loLine, na)
+
+// Optional: subtle background for current day
+bgcolor(showTodayOnly and isTodayCh ? color.new(color.silver, 95) : na)
